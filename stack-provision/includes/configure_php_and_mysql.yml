@@ -1,0 +1,60 @@
+- name: Adjust OpCache memory settings
+  lineinfile:
+    dest: "/etc/php/7.1/apache2/conf.d/10-opcache.ini"
+    regexp: "^opcache.memory_consumption"
+    line: "opcache.memory_consumption = 96"
+    state: present
+  notify: restart apache
+
+#- name: ensure mysql listen on all ports
+#  lineinfile: 
+#    dest: "/etc/mysql/my.cnf"
+#    regexp: "^bind-address"
+#    line: "bind-address = 0.0.0.0"
+#  notify: restart mysql
+
+- name: set mysql root password
+  shell: "mysqladmin -u root password '{{ mysql_root_passwd }}'"
+  notify: restart mysql
+
+- name: create my.cnf file
+  template:
+    src: "templates/my.cnf.j2"
+    dest: "~/.my.cnf"
+  notify: restart mysql
+
+- name: check if DB test exists
+  shell: mysql -e 'SHOW DATABASES;' | grep test
+  register: testdb_status
+  failed_when: testdb_status.rc == 2
+
+- name: Remove the mysql test database
+  mysql_db:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+    login_password: "{{ mysql_root_passwd }}"
+    login_host: "127.0.0.1"
+    name: test
+    state: absent
+  when: testdb_status == 0
+  
+- name: Create database for WebAPP
+  mysql_db:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+    login_password: "{{ mysql_root_passwd }}"
+    login_host: "127.0.0.1"
+    name: "{{ dbname }}"
+    state: present
+
+- name: Create user for the framework 
+  mysql_user:
+    login_user: "root"
+    login_host: "127.0.0.1"
+    login_password: "{{ mysql_root_passwd }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    name: "{{ dbuser }}"
+    password: "{{ dbpasswd }}"
+    state: present
+    host: localhost
+    priv: "{{ dbname }}.*:ALL"

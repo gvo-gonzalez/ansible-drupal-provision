@@ -1,0 +1,87 @@
+---
+- hosts: drupalhost
+  become: true
+
+  vars_files:
+    - vars.yml
+
+  pre_tasks:
+    - name: Update apt cache if needed
+      apt:
+        update_cache: yes
+        cache_valid_time: 300
+  
+  handlers:
+    - name: restart apache
+      service:
+        name: apache2
+        state: restarted
+    
+    - name: restart mysql
+      service:
+        name: mysql
+        state: restarted
+  
+  tasks:
+    - name: Get software for apt repository management
+      apt:
+        name: ['python-apt', 'python-pycurl', 'python-pip', 'python3-pip']
+
+    - name: packages to manage mysql
+      pip:
+        name: [
+          'pymysql'
+        ]
+        state: present
+
+    - name: Add ondrej repository for later versions of php
+      apt_repository:
+        repo: 'ppa:ondrej/php'
+        update_cache: yes
+
+    - name: Install apache, php, mysql and other dependencies
+      apt:
+        name: [
+          'git',
+          'sendmail',
+          'curl',
+          'unzip',
+          'php7.1-common',
+          'php7.1-cli',
+          'php7.1-gd',
+          'php7.1-curl',
+          'php7.1-json',
+          'php7.1-opcache',
+          'php7.1-xml',
+          'php7.1-mbstring',
+          'php7.1-pdo',
+          'php7.1-mysql',
+          'php-apcu',
+          'libpcre3-dev',
+          'libapache2-mod-php7.1',
+          'python-mysqldb',
+          'mysql-server-5.7'
+        ]
+        state: present
+        update_cache: yes
+
+    - name: Disable firewall (for local dev only)
+      service:
+        name: ufw
+        state: stopped
+        enabled: false
+    
+    - name: Start service stack
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      with_items:
+        - apache2
+        - mysql
+
+    - include: includes/configure_apache.yml
+    - include: includes/configure_php_and_mysql.yml
+    - include: includes/install_composer_and_rush.yml
+    - include: includes/install_and_run_drupal.yml
+        

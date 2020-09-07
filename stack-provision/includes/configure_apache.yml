@@ -1,0 +1,29 @@
+- name: Enable Apache rewrite module required for drupal
+  apache2_module:
+    name: rewrite
+    state: present
+  notify: restart apache
+
+- name: Add apache virtual host for Drupal
+  template:
+    src: "templates/{{ vhost_template_conf }}"
+    dest: "/etc/apache2/sites-available/{{ virtual_host_conf_file }}"
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart apache
+
+- name: Creates symbolic link for drupal virtual host
+  file:
+    src: "/etc/apache2/sites-available/{{ virtual_host_conf_file }}"
+    dest: "/etc/apache2/sites-enabled/{{ virtual_host_conf_file }}"
+    state: link
+  notify: restart apache
+
+- name: Disable default virtual host
+  file:
+    path: "/etc/apache2/sites-enabled/000-default.conf"
+    state: absent
+  notify: restart apache
+    
+    
