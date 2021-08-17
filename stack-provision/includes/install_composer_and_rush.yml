@@ -6,7 +6,7 @@
 
 - name: Run composer installer
   command: >
-    php composer-installer.php
+    php composer-installer.php --version=1.10.19
     chdir=/tmp
     creates=/usr/local/bin/composer
 
